@@ -381,9 +381,13 @@ body {
 
 /* ── LEVEL 3: FEATURE SUB-PANES ──────────────────────────────────────────── */
 .feature-pane {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 16px;
+}
+
+.feature-pane.active {
+  display: flex;
 }
 
 .pane-intro h3 {
