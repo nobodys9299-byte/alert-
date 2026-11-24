@@ -1,8 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// DUAL-BOT APP — FRONTEND CONTROLLER (REAL-TIME ENGINE SYNC)
+// TRANSPULSE PRO — CLEAN MENU-DRIVEN CONTROLLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const API_BASE = (window.location.protocol === 'file:' || !window.location.host)
+  ? (localStorage.getItem('bot_server_url') || 'http://localhost:8080')
+  : '';
+
 let currentBot = "bot1";
+let navigationState = "home"; // "home" | "bot-menu" | "subview"
+let activeSubFeatureId = null;
+
 let allBotsStatus = {};
 let templatesData = {};
 let activeTemplateKey = "admin_job_alert";
@@ -11,159 +18,203 @@ let userListCache = [];
 
 // ── INITIALIZATION ─────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  setupNavigation();
-  setupBotSwitcher();
+  setupNavigationHandlers();
   setupTemplateEditor();
   setupEnvViewToggle();
 
   // Initial fetch
   refreshAllData();
 
-  // Start polling loops
+  // Periodic Polling
   setInterval(pollStatus, 2000);
   setInterval(pollLogs, 2500);
 
-  // Global Refresh button
-  document.getElementById("btn-global-refresh").addEventListener("click", () => {
-    refreshAllData();
-  });
+  // Sync button
+  document.getElementById("btn-global-refresh").addEventListener("click", refreshAllData);
 
   // Clear logs button
   document.getElementById("btn-clear-logs").addEventListener("click", () => {
     document.getElementById("terminal-body").innerHTML = "";
   });
-
-  // Stop engine button
-  document.getElementById("btn-stop-engine").addEventListener("click", stopEngine);
-  document.getElementById("btn-remote-stop").addEventListener("click", stopEngine);
-  document.getElementById("btn-open-start-modal").addEventListener("click", openStartModal);
-  document.getElementById("btn-toggle-debug").addEventListener("click", toggleDebug);
 });
 
-// ── NAVIGATION & TABS ──────────────────────────────────────────────────────
-function setupNavigation() {
-  document.querySelectorAll(".nav-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      const targetId = tab.getAttribute("data-tab");
-      switchTab(targetId);
-    });
-  });
+// ── MENU & VIEW NAVIGATION ─────────────────────────────────────────────────
+function setupNavigationHandlers() {
+  document.getElementById("btn-top-back").addEventListener("click", navigateBack);
 }
 
-function switchTab(targetId) {
-  document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+function openBotMenu(botId) {
+  currentBot = botId;
+  navigationState = "bot-menu";
 
-  const targetTab = document.querySelector(`.nav-tab[data-tab="${targetId}"]`);
-  const targetPane = document.getElementById(targetId);
+  // Hide Home, Show Bot Menu
+  document.getElementById("view-home").classList.remove("active");
+  document.getElementById("view-feature").classList.remove("active");
+  document.getElementById("view-bot-menu").classList.add("active");
 
-  if (targetTab) targetTab.classList.add("active");
+  // Update Topbar
+  document.getElementById("brand-home").classList.add("hidden");
+  const subTitle = document.getElementById("subview-header-title");
+  subTitle.classList.remove("hidden");
+  subTitle.textContent = botId === "bot1" ? "Bot 1 · Alert Bot" : "Bot 2 · Hybrid Bot";
+
+  const backBtn = document.getElementById("btn-top-back");
+  backBtn.classList.remove("hidden");
+  document.getElementById("back-btn-text").textContent = "All Bots";
+
+  // Render Bot Menu Status
+  renderBotMenuState();
+  pollStatus();
+}
+
+function openSubFeature(featureId) {
+  navigationState = "subview";
+  activeSubFeatureId = featureId;
+
+  // Hide Bot Menu, Show Sub-Feature view
+  document.getElementById("view-bot-menu").classList.remove("active");
+  document.getElementById("view-feature").classList.add("active");
+
+  // Hide all sub-panes and show target
+  document.querySelectorAll(".feature-pane").forEach(pane => pane.classList.remove("active"));
+  const targetPane = document.getElementById(featureId);
   if (targetPane) targetPane.classList.add("active");
 
-  // Tab-specific loads
-  if (targetId === "tab-users") loadUsers();
-  if (targetId === "tab-cookies") loadCookiesAndCreds();
-  if (targetId === "tab-templates") loadTemplates();
-  if (targetId === "tab-env") loadEnv();
+  // Update Topbar
+  const titles = {
+    "sub-connect": "Start & Login",
+    "sub-status": "Bot Status",
+    "sub-cookies": "Cookies & Creds",
+    "sub-users": "Users & Plans",
+    "sub-templates": "Telegram Messages",
+    "sub-env": ".env Settings",
+    "sub-logs": "Console Logs"
+  };
+
+  document.getElementById("subview-header-title").textContent = titles[featureId] || "Feature";
+  document.getElementById("back-btn-text").textContent = "Menu";
+
+  // Load sub-feature specific data
+  if (featureId === "sub-users") loadUsers();
+  if (featureId === "sub-cookies") loadCookiesAndCreds();
+  if (featureId === "sub-templates") loadTemplates();
+  if (featureId === "sub-env") loadEnv();
+  if (featureId === "sub-logs") pollLogs();
+  if (featureId === "sub-status") renderDetailStatus();
 }
 
-// ── BOT SWITCHER ───────────────────────────────────────────────────────────
-function setupBotSwitcher() {
-  document.getElementById("btn-select-bot1").addEventListener("click", () => selectBot("bot1"));
-  document.getElementById("btn-select-bot2").addEventListener("click", () => selectBot("bot2"));
+function navigateBack() {
+  if (navigationState === "subview") {
+    // Go back to Bot Menu
+    document.getElementById("view-feature").classList.remove("active");
+    document.getElementById("view-bot-menu").classList.add("active");
+    navigationState = "bot-menu";
+
+    const subTitle = document.getElementById("subview-header-title");
+    subTitle.textContent = currentBot === "bot1" ? "Bot 1 · Alert Bot" : "Bot 2 · Hybrid Bot";
+    document.getElementById("back-btn-text").textContent = "All Bots";
+    renderBotMenuState();
+  } else if (navigationState === "bot-menu") {
+    // Go back to Home
+    document.getElementById("view-bot-menu").classList.remove("active");
+    document.getElementById("view-home").classList.add("active");
+    navigationState = "home";
+
+    document.getElementById("btn-top-back").classList.add("hidden");
+    document.getElementById("subview-header-title").classList.add("hidden");
+    document.getElementById("brand-home").classList.remove("hidden");
+  }
 }
 
-function selectBot(botId) {
-  currentBot = botId;
-  document.querySelectorAll(".bot-pill-btn").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-bot") === botId);
-  });
-
-  document.getElementById("current-bot-label").textContent =
-    botId === "bot1" ? "BOT 1 · ALERT BOT" : "BOT 2 · HYBRID BOT";
-  document.getElementById("term-title").textContent =
-    botId === "bot1" ? "Bot 1 Console Stream" : "Bot 2 Console Stream";
-
-  // Re-render current tab for selected bot
-  renderCurrentBotStatus();
-  loadCookiesAndCreds();
-  loadUsers();
-  loadEnv();
-  pollLogs();
-}
-
-// ── STATUS & METRICS SYNC ──────────────────────────────────────────────────
+// ── STATUS & POLLING ───────────────────────────────────────────────────────
 async function pollStatus() {
   try {
-    const res = await fetch("/api/status");
+    const res = await fetch(`${API_BASE}/api/status`);
     const data = await res.json();
     if (data.ok) {
       allBotsStatus = data.bots;
-      updateHeaderPills();
-      renderCurrentBotStatus();
+      renderHomeScreenStatus();
+      if (navigationState === "bot-menu") renderBotMenuState();
+      if (navigationState === "subview" && activeSubFeatureId === "sub-status") renderDetailStatus();
     }
-  } catch (err) {
-    // console.warn("Poll status failed:", err);
-  }
+  } catch (err) {}
 }
 
-function updateHeaderPills() {
+function renderHomeScreenStatus() {
   for (const botId of ["bot1", "bot2"]) {
     const s = allBotsStatus[botId];
-    const dot = document.getElementById(`pill-dot-${botId}`);
-    if (dot && s) {
-      dot.className = "status-dot " + s.engine_status.toLowerCase();
+    if (!s) continue;
+
+    const pill = document.getElementById(`home-status-${botId}`);
+    if (pill) {
+      pill.textContent = s.engine_status;
+      pill.className = "status-pill " + s.engine_status.toLowerCase();
     }
+
+    const prof = document.getElementById(`home-prof-${botId}`);
+    if (prof) prof.textContent = s.active_profile || "None";
+
+    const uptime = document.getElementById(`home-uptime-${botId}`);
+    if (uptime) uptime.textContent = s.uptime;
+
+    const alerts = document.getElementById(`home-alerts-${botId}`);
+    if (alerts) alerts.textContent = s.alert_count;
   }
 }
 
-function renderCurrentBotStatus() {
+function renderBotMenuState() {
   const s = allBotsStatus[currentBot];
   if (!s) return;
 
-  const badge = document.getElementById("engine-status-badge");
+  const badge = document.getElementById("menu-engine-badge");
   badge.textContent = s.engine_status;
-  badge.className = "engine-indicator " + s.engine_status.toLowerCase();
+  badge.className = "banner-badge " + s.engine_status.toLowerCase();
 
-  document.getElementById("engine-profile-badge").textContent = `🪪 Profile: ${s.active_profile}`;
-  document.getElementById("val-uptime").textContent = s.uptime;
-  document.getElementById("val-next-check").textContent = s.next_check;
-  document.getElementById("val-fetch-count").textContent = `${s.fetch_count} times`;
-  document.getElementById("val-alert-count").textContent = s.alert_count;
-  document.getElementById("val-active-users").textContent = s.users_stats ? s.users_stats.receiving_alerts : 0;
-  document.getElementById("val-debug-mode").textContent = s.debug_mode ? "ON" : "OFF";
+  document.getElementById("menu-bot-title").textContent =
+    currentBot === "bot1" ? "Bot 1 · Alert Bot" : "Bot 2 · Hybrid Bot";
 
-  document.getElementById("info-scan-interval").textContent = s.scan_interval;
-  document.getElementById("info-page-time").textContent = s.page_time;
-  document.getElementById("info-auto-shutdown").textContent = s.auto_shutdown;
-  document.getElementById("info-reminder-at").textContent = s.reminder_at;
-  document.getElementById("info-session-start").textContent = s.session_start;
-  document.getElementById("info-last-disconnect").textContent = s.last_disconnect;
+  document.getElementById("menu-banner-sub").textContent =
+    `Profile: ${s.active_profile} · Uptime: ${s.uptime}`;
 
-  // Render cookie badges
-  if (s.cookies) {
-    for (const slot of ["admin", "user1", "user2"]) {
-      const ck = s.cookies[slot];
-      const elBadge = document.getElementById(`badge-ck-${slot}`);
-      const elMeta  = document.getElementById(`meta-ck-${slot}`);
-      if (elBadge && ck) {
-        elBadge.textContent = ck.saved ? "Saved" : "Not Saved";
-        elBadge.className = "slot-badge " + (ck.saved ? "saved" : "");
-        elMeta.textContent = `Valid Until: ${ck.valid_until || 'Unknown'}`;
-      }
-    }
+  const btnToggle = document.getElementById("btn-quick-toggle-engine");
+  if (s.engine_status === "ONLINE") {
+    btnToggle.textContent = "Stop";
+    btnToggle.className = "btn-quick-stop running";
+  } else {
+    btnToggle.textContent = "Start";
+    btnToggle.className = "btn-quick-stop";
   }
 }
 
-// ── ENGINE ACTIONS ─────────────────────────────────────────────────────────
-function openStartModal() {
-  document.getElementById("modal-start-engine").classList.add("active");
+function renderDetailStatus() {
+  const s = allBotsStatus[currentBot];
+  if (!s) return;
+
+  document.getElementById("det-engine-status").textContent = s.engine_status;
+  document.getElementById("det-active-profile").textContent = s.active_profile;
+  document.getElementById("det-uptime").textContent = s.uptime;
+  document.getElementById("det-next-check").textContent = s.next_check;
+  document.getElementById("det-fetch-count").textContent = `${s.fetch_count} times`;
+  document.getElementById("det-alert-count").textContent = s.alert_count;
+  document.getElementById("det-scan-interval").textContent = s.scan_interval;
+  document.getElementById("det-auto-shutdown").textContent = s.auto_shutdown;
+  document.getElementById("det-session-start").textContent = s.session_start;
+  document.getElementById("det-debug-mode").textContent = s.debug_mode ? "ON" : "OFF";
 }
 
+function handleQuickEngineAction() {
+  const s = allBotsStatus[currentBot];
+  if (s && s.engine_status === "ONLINE") {
+    stopEngine();
+  } else {
+    openSubFeature("sub-connect");
+  }
+}
+
+// ── ENGINE START & STOP ────────────────────────────────────────────────────
 async function executeStartEngine(profile) {
-  closeModal("modal-start-engine");
   try {
-    const res = await fetch(`/api/bot/${currentBot}/connect`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/connect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ profile })
@@ -171,6 +222,7 @@ async function executeStartEngine(profile) {
     const data = await res.json();
     alert((data.ok ? "✅ " : "❌ ") + (data.message || "Action finished."));
     pollStatus();
+    navigateBack();
   } catch (err) {
     alert("Connection error: " + err);
   }
@@ -179,7 +231,7 @@ async function executeStartEngine(profile) {
 async function stopEngine() {
   if (!confirm(`Are you sure you want to STOP ${currentBot.toUpperCase()} engine?`)) return;
   try {
-    const res = await fetch(`/api/bot/${currentBot}/stop`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/stop`, { method: "POST" });
     const data = await res.json();
     alert(data.message || "Engine stopped.");
     pollStatus();
@@ -190,47 +242,19 @@ async function stopEngine() {
 
 async function toggleDebug() {
   try {
-    const res = await fetch(`/api/bot/${currentBot}/toggle_debug`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/toggle_debug`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({})
     });
-    const data = await res.json();
     pollStatus();
   } catch (err) {}
 }
 
-function openStatusModal() {
-  const s = allBotsStatus[currentBot];
-  if (!s) return;
-  const report = `📊 SYSTEM STATUS [${currentBot.toUpperCase()}]
-─────────────────────
-Engine        : ${s.engine_status}
-Profile       : ${s.active_profile}
-Session Start : ${s.session_start}
-Uptime        : ${s.uptime}
-Auto-Shutdown : ${s.auto_shutdown}
-Reminder At   : ${s.reminder_at}
-Scan Interval : ${s.scan_interval}
-Page Time     : ${s.page_time}
-Next Check    : ${s.next_check}
-Fetch Count   : ${s.fetch_count} times
-Debug Mode    : ${s.debug_mode ? '🟢 ON' : '🔴 OFF'}
-Last Disconn  : ${s.last_disconnect}
-─────────────────────
-👥 User Statistics:
-Total Registered : ${s.users_stats ? s.users_stats.total : 0}
-Approved : ${s.users_stats ? s.users_stats.approved : 0} | Pending : ${s.users_stats ? s.users_stats.pending : 0} | Rejected : ${s.users_stats ? s.users_stats.rejected : 0}
-Receiving Alerts : ${s.users_stats ? s.users_stats.receiving_alerts : 0}
-─────────────────────`;
-  document.getElementById("status-report-text").textContent = report;
-  document.getElementById("modal-status-report").classList.add("active");
-}
-
-// ── COOKIES & CREDS TAB ────────────────────────────────────────────────────
+// ── COOKIES & CREDENTIALS ──────────────────────────────────────────────────
 async function loadCookiesAndCreds() {
   try {
-    const resCookies = await fetch(`/api/bot/${currentBot}/cookies`);
+    const resCookies = await fetch(`${API_BASE}/api/bot/${currentBot}/cookies`);
     const cookiesData = (await resCookies.json()).cookies || {};
 
     for (const slot of ["admin", "user1", "user2"]) {
@@ -246,7 +270,7 @@ async function loadCookiesAndCreds() {
       }
     }
 
-    const resCreds = await fetch(`/api/bot/${currentBot}/creds`);
+    const resCreds = await fetch(`${API_BASE}/api/bot/${currentBot}/creds`);
     const credsData = (await resCreds.json()).creds || {};
 
     for (const slot of ["login1", "login2"]) {
@@ -283,16 +307,10 @@ async function saveCookieModal() {
   }
 
   try {
-    const res = await fetch(`/api/bot/${currentBot}/cookies`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/cookies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        slot,
-        cookie_name: name,
-        cookie_value: val,
-        xsrf_value: xsrf,
-        valid_until: valid
-      })
+      body: JSON.stringify({ slot, cookie_name: name, cookie_value: val, xsrf_value: xsrf, valid_until: valid })
     });
     const d = await res.json();
     alert(d.message || "Cookie saved.");
@@ -306,7 +324,7 @@ async function saveCookieModal() {
 async function confirmResetCookies() {
   if (!confirm(`Are you sure you want to RESET ALL COOKIES for ${currentBot.toUpperCase()}?`)) return;
   try {
-    await fetch(`/api/bot/${currentBot}/reset_cookies`, { method: "POST" });
+    await fetch(`${API_BASE}/api/bot/${currentBot}/reset_cookies`, { method: "POST" });
     alert("All cookies reset.");
     loadCookiesAndCreds();
   } catch (err) {}
@@ -329,7 +347,7 @@ async function saveCredsModal() {
   }
 
   try {
-    const res = await fetch(`/api/bot/${currentBot}/creds`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/creds`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slot, email, password })
@@ -346,16 +364,16 @@ async function saveCredsModal() {
 async function confirmResetCreds() {
   if (!confirm(`Are you sure you want to RESET ALL LOGIN IDs for ${currentBot.toUpperCase()}?`)) return;
   try {
-    await fetch(`/api/bot/${currentBot}/reset_creds`, { method: "POST" });
+    await fetch(`${API_BASE}/api/bot/${currentBot}/reset_creds`, { method: "POST" });
     alert("Credentials reset.");
     loadCookiesAndCreds();
   } catch (err) {}
 }
 
-// ── USERS & SUBSCRIPTIONS TAB ──────────────────────────────────────────────
+// ── USERS & PLANS ──────────────────────────────────────────────────────────
 async function loadUsers() {
   try {
-    const res = await fetch(`/api/bot/${currentBot}/users`);
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/users`);
     const data = await res.json();
     const users = data.users || [];
     const adminId = data.admin_id;
@@ -365,52 +383,53 @@ async function loadUsers() {
     document.getElementById("u-stat-total").textContent = nonAdmin.length;
     document.getElementById("u-stat-approved").textContent = nonAdmin.filter(u => u.status === "approved").length;
     document.getElementById("u-stat-pending").textContent = nonAdmin.filter(u => u.status === "pending").length;
-    document.getElementById("u-stat-receiving").textContent = nonAdmin.filter(u => u.status === "approved" || u.free_alerts > 0).length;
 
-    const tbody = document.getElementById("users-table-body");
-    tbody.innerHTML = "";
+    const container = document.getElementById("users-cards-container");
+    container.innerHTML = "";
 
     if (nonAdmin.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center">No registered users yet.</td></tr>';
+      container.innerHTML = '<p class="text-muted" style="text-align:center; padding:20px;">No registered users yet.</p>';
       return;
     }
 
     nonAdmin.forEach(u => {
-      const tr = document.createElement("tr");
-
-      let expiryText = "-";
+      let expiryText = "Trial / No Expiry";
       if (u.expiry) {
         const days = Math.ceil((new Date(u.expiry) - new Date()) / (1000 * 60 * 60 * 24));
         expiryText = days > 0 ? `${days} days left` : "Expired";
       }
 
-      tr.innerHTML = `
-        <td>
-          <b>${escapeHtml(u.name || 'Unknown')}</b><br>
-          <small class="text-muted">@${escapeHtml(u.username || 'none')}</small>
-        </td>
-        <td><code>${u.id}</code></td>
-        <td><span class="badge-status ${u.status}">${u.status}</span></td>
-        <td>${u.free_alerts ?? 0}</td>
-        <td>${expiryText}</td>
-        <td>
-          <div class="user-action-btn-group">
-            <button class="btn btn-micro btn-success" onclick="approveUser(${u.id}, '2day')">✅ 2D</button>
-            <button class="btn btn-micro btn-success" onclick="approveUser(${u.id}, '30day')">✅ 30D</button>
-            <button class="btn btn-micro btn-danger" onclick="rejectUser(${u.id})">❌ Reject</button>
-            <button class="btn btn-micro btn-secondary" onclick="openDirectMsgModal(${u.id}, '${escapeHtml(u.name || '')}')">💬 DM</button>
-            <button class="btn btn-micro btn-outline-danger" onclick="removeUser(${u.id})">🗑️</button>
+      const card = document.createElement("div");
+      card.className = "user-card";
+      card.innerHTML = `
+        <div class="uc-top">
+          <div>
+            <span class="uc-name">${escapeHtml(u.name || 'Unknown')}</span>
+            <span class="uc-username">@${escapeHtml(u.username || 'none')}</span>
           </div>
-        </td>
+          <span class="uc-badge ${u.status}">${u.status}</span>
+        </div>
+        <div class="uc-meta-line">
+          <span>ID: <code>${u.id}</code></span> · 
+          <span>Free Alerts: <b>${u.free_alerts ?? 0}</b></span> · 
+          <span>${expiryText}</span>
+        </div>
+        <div class="uc-actions">
+          <button class="btn btn-micro btn-success" onclick="approveUser(${u.id}, '2day')">✅ 2D</button>
+          <button class="btn btn-micro btn-success" onclick="approveUser(${u.id}, '30day')">✅ 30D</button>
+          <button class="btn btn-micro btn-danger" onclick="rejectUser(${u.id})">❌ Reject</button>
+          <button class="btn btn-micro btn-secondary" onclick="openDirectMsgModal(${u.id}, '${escapeHtml(u.name || '')}')">💬 DM</button>
+          <button class="btn btn-micro btn-outline-danger" onclick="removeUser(${u.id})">🗑️</button>
+        </div>
       `;
-      tbody.appendChild(tr);
+      container.appendChild(card);
     });
   } catch (err) {}
 }
 
 async function approveUser(userId, plan) {
   try {
-    const res = await fetch(`/api/bot/${currentBot}/users/approve`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/users/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, plan })
@@ -423,7 +442,7 @@ async function approveUser(userId, plan) {
 
 async function rejectUser(userId) {
   try {
-    const res = await fetch(`/api/bot/${currentBot}/users/reject`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/users/reject`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId })
@@ -437,7 +456,7 @@ async function rejectUser(userId) {
 async function removeUser(userId) {
   if (!confirm(`Remove user ${userId}?`)) return;
   try {
-    const res = await fetch(`/api/bot/${currentBot}/users/remove`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/users/remove`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId })
@@ -461,7 +480,7 @@ async function sendDirectMessage() {
   if (!text) return;
 
   try {
-    const res = await fetch(`/api/bot/${currentBot}/message`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, text })
@@ -488,7 +507,7 @@ async function sendBroadcast() {
   if (!confirm("Are you sure you want to BROADCAST this message to ALL active users?")) return;
 
   try {
-    const res = await fetch(`/api/bot/${currentBot}/broadcast`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/broadcast`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text })
@@ -501,7 +520,7 @@ async function sendBroadcast() {
   }
 }
 
-// ── TELEGRAM NOTIFICATION TEMPLATES TAB ────────────────────────────────────
+// ── TELEGRAM TEMPLATES ─────────────────────────────────────────────────────
 function setupTemplateEditor() {
   const textarea = document.getElementById("template-textarea");
   textarea.addEventListener("input", () => {
@@ -516,7 +535,7 @@ function setupTemplateEditor() {
 
 async function loadTemplates() {
   try {
-    const res = await fetch("/api/templates");
+    const res = await fetch(`${API_BASE}/api/templates`);
     const data = await res.json();
     if (data.ok) {
       templatesData = data.templates;
@@ -532,7 +551,7 @@ function renderTemplatePicker() {
 
   for (const [key, tpl] of Object.entries(templatesData)) {
     const btn = document.createElement("button");
-    btn.className = `tpl-btn ${key === activeTemplateKey ? 'active' : ''}`;
+    btn.className = `tpl-pill ${key === activeTemplateKey ? 'active' : ''}`;
     btn.textContent = tpl.title || key;
     btn.onclick = () => selectTemplate(key);
     picker.appendChild(btn);
@@ -574,7 +593,6 @@ function updateTelegramPreview() {
   const tpl = templatesData[activeTemplateKey] || {};
   const isHtml = (tpl.parse_mode || "HTML") === "HTML";
 
-  // Dummy simulation data
   let preview = raw
     .replace(/{level_name}/g, "LEVEL 1")
     .replace(/{available}/g, "4")
@@ -591,7 +609,6 @@ function updateTelegramPreview() {
   if (isHtml) {
     bubble.innerHTML = preview;
   } else {
-    // Basic Markdown formatting for preview
     let formatted = escapeHtml(preview)
       .replace(/\*(.*?)\*/g, "<b>$1</b>")
       .replace(/_(.*?)_/g, "<i>$1</i>")
@@ -602,7 +619,7 @@ function updateTelegramPreview() {
 
 async function saveTemplates() {
   try {
-    const res = await fetch("/api/templates", {
+    const res = await fetch(`${API_BASE}/api/templates`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(templatesData)
@@ -614,7 +631,7 @@ async function saveTemplates() {
   }
 }
 
-// ── .ENV SETTINGS TAB ──────────────────────────────────────────────────────
+// ── .ENV SETTINGS ──────────────────────────────────────────────────────────
 function setupEnvViewToggle() {
   const btnForm = document.getElementById("btn-env-form-view");
   const btnRaw  = document.getElementById("btn-env-raw-view");
@@ -642,7 +659,7 @@ function setupEnvViewToggle() {
 
 async function loadEnv() {
   try {
-    const res = await fetch(`/api/bot/${currentBot}/env`);
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/env`);
     const data = await res.json();
     if (data.ok) {
       document.getElementById("env-raw-textarea").value = data.raw || "";
@@ -672,7 +689,7 @@ async function saveEnv() {
       payload = { kv };
     }
 
-    const res = await fetch(`/api/bot/${currentBot}/env`, {
+    const res = await fetch(`${API_BASE}/api/bot/${currentBot}/env`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -686,10 +703,10 @@ async function saveEnv() {
   }
 }
 
-// ── CONSOLE LOGS TAB ───────────────────────────────────────────────────────
+// ── CONSOLE LOGS ───────────────────────────────────────────────────────────
 async function pollLogs() {
   try {
-    const res = await fetch(`/api/logs?bot_id=${currentBot}`);
+    const res = await fetch(`${API_BASE}/api/logs?bot_id=${currentBot}`);
     const data = await res.json();
     if (data.ok && data.logs && data.logs[currentBot]) {
       renderLogs(data.logs[currentBot]);
@@ -732,10 +749,14 @@ function closeModal(id) {
 function refreshAllData() {
   pollStatus();
   pollLogs();
-  loadCookiesAndCreds();
-  loadUsers();
-  loadTemplates();
-  loadEnv();
+  if (navigationState === "bot-menu") renderBotMenuState();
+  if (navigationState === "subview") {
+    if (activeSubFeatureId === "sub-users") loadUsers();
+    if (activeSubFeatureId === "sub-cookies") loadCookiesAndCreds();
+    if (activeSubFeatureId === "sub-templates") loadTemplates();
+    if (activeSubFeatureId === "sub-env") loadEnv();
+    if (activeSubFeatureId === "sub-status") renderDetailStatus();
+  }
 }
 
 function escapeHtml(str) {
