@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dual-Bot Command Center</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="theme-dark">
+  <div id="app" class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="app-logo">
+          <span class="logo-icon">🤖</span>
+          <div class="logo-text">
+            <h1>Dual-Bot Center</h1>
+            <span class="logo-badge">TranscribersNet Engine</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bot Switcher -->
+      <div class="bot-switcher">
+        <button class="bot-pill-btn active" data-bot="bot1" id="btn-select-bot1">
+          <span class="status-dot offline" id="pill-dot-bot1"></span>
+          Bot 1 (Alert)
+        </button>
+        <button class="bot-pill-btn" data-bot="bot2" id="btn-select-bot2">
+          <span class="status-dot offline" id="pill-dot-bot2"></span>
+          Bot 2 (Hybrid)
+        </button>
+      </div>
+
+      <div class="header-right">
+        <button class="btn-refresh" id="btn-global-refresh" title="Refresh Live Data">
+          🔄 Sync
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-nav">
+      <button class="nav-tab active" data-tab="tab-control">🎮 Control Center</button>
+      <button class="nav-tab" data-tab="tab-cookies">🍪 Cookies & Creds</button>
+      <button class="nav-tab" data-tab="tab-users">👥 Users & Subscriptions</button>
+      <button class="nav-tab" data-tab="tab-templates">💬 Telegram Notifications</button>
+      <button class="nav-tab" data-tab="tab-env">⚙️ .env Settings</button>
+      <button class="nav-tab" data-tab="tab-logs">📟 Console Logs</button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+
+      <!-- ═════════ TAB 1: CONTROL CENTER ═════════ -->
+      <section id="tab-control" class="tab-pane active">
+        <!-- Status Hero Card -->
+        <div class="card status-hero">
+          <div class="status-hero-header">
+            <div>
+              <span class="sub-label" id="current-bot-label">BOT 1 · ALERT BOT</span>
+              <div class="status-title-row">
+                <span class="engine-indicator offline" id="engine-status-badge">OFFLINE</span>
+                <span class="profile-badge" id="engine-profile-badge">🪪 Profile: None</span>
+              </div>
+            </div>
+            <div class="status-quick-actions">
+              <button class="btn btn-primary" id="btn-open-start-modal">🚂 Start Engine</button>
+              <button class="btn btn-danger" id="btn-stop-engine">🛑 Stop Engine</button>
+            </div>
+          </div>
+
+          <!-- Metrics Grid -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">⏱️ Current Uptime</span>
+              <span class="metric-val" id="val-uptime">0h 00m 00s</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">💤 Next Scheduled Check</span>
+              <span class="metric-val" id="val-next-check">Not scheduled</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">🔍 Total Scans Done</span>
+              <span class="metric-val" id="val-fetch-count">0 times</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">📤 Alerts Sent</span>
+              <span class="metric-val" id="val-alert-count">0</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">👥 Active Users</span>
+              <span class="metric-val" id="val-active-users">0</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">🐞 Debug Mode</span>
+              <div class="toggle-row">
+                <span class="metric-val" id="val-debug-mode">OFF</span>
+                <button class="btn-micro" id="btn-toggle-debug">Toggle</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Telegram Remote Buttons Grid -->
+        <div class="card">
+          <div class="card-header">
+            <h3>🎮 Remote Telegram Controls</h3>
+            <span class="card-desc">Execute identical actions to Telegram inline buttons</span>
+          </div>
+          <div class="remote-btn-grid">
+            <button class="remote-btn" onclick="openStartModal()">
+              <span class="btn-icon">🚂</span>
+              <span>START ENGINE</span>
+              <small>Select Profile</small>
+            </button>
+            <button class="remote-btn stop" id="btn-remote-stop">
+              <span class="btn-icon">🛑</span>
+              <span>STOP ENGINE</span>
+              <small>Graceful Session Stop</small>
+            </button>
+            <button class="remote-btn" onclick="openStatusModal()">
+              <span class="btn-icon">📊</span>
+              <span>BOT STATUS</span>
+              <small>Full System Report</small>
+            </button>
+            <button class="remote-btn" onclick="switchTab('tab-cookies')">
+              <span class="btn-icon">🍪</span>
+              <span>SAVED DATA</span>
+              <small>Cookies & Creds</small>
+            </button>
+            <button class="remote-btn" onclick="switchTab('tab-users')">
+              <span class="btn-icon">👥</span>
+              <span>REG USERS</span>
+              <small>Approve/Reject Sub</small>
+            </button>
+            <button class="remote-btn" onclick="openBroadcastModal()">
+              <span class="btn-icon">📢</span>
+              <span>BROADCAST</span>
+              <small>Send to All Active</small>
+            </button>
+            <button class="remote-btn danger" onclick="confirmResetCreds()">
+              <span class="btn-icon">🗑️</span>
+              <span>RESET LOGIN IDs</span>
+              <small>Wipe saved creds</small>
+            </button>
+            <button class="remote-btn danger" onclick="confirmResetCookies()">
+              <span class="btn-icon">🗑️</span>
+              <span>RESET COOKIES</span>
+              <small>Wipe saved cookies</small>
+            </button>
+          </div>
+        </div>
+
+        <!-- Session Limits & Timing Details -->
+        <div class="card">
+          <div class="card-header">
+            <h3>⏱️ Operational Intervals & Limits</h3>
+          </div>
+          <div class="detail-table-container">
+            <table class="data-table">
+              <tbody>
+                <tr><td>Scan Interval</td><td id="info-scan-interval">3–10 min</td></tr>
+                <tr><td>Page Surf Delay</td><td id="info-page-time">3.0–9.59 s</td></tr>
+                <tr><td>Auto-Shutdown Limit</td><td id="info-auto-shutdown">3h 00m</td></tr>
+                <tr><td>Reminder Interval</td><td id="info-reminder-at">2h 00m</td></tr>
+                <tr><td>Session Start</td><td id="info-session-start">None</td></tr>
+                <tr><td>Last Disconnect</td><td id="info-last-disconnect">None</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════ TAB 2: COOKIES & CREDS ═════════ -->
+      <section id="tab-cookies" class="tab-pane">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3>🍪 Saved Cookies Management</h3>
+              <span class="card-desc">Session cookies for stealth login slots</span>
+            </div>
+            <button class="btn btn-outline-danger" onclick="confirmResetCookies()">🗑️ Reset All Cookies</button>
+          </div>
+
+          <div class="slots-grid">
+            <!-- Admin Cookie Slot -->
+            <div class="slot-card" id="slot-admin">
+              <div class="slot-header">
+                <h4>🔴 Admin Cookie</h4>
+                <span class="slot-badge" id="badge-ck-admin">Not Saved</span>
+              </div>
+              <p class="slot-meta" id="meta-ck-admin">Valid Until: Not set</p>
+              <button class="btn btn-sm btn-primary" onclick="openEditCookieModal('admin')">✏️ Edit / Update</button>
+            </div>
+
+            <!-- User 1 Cookie Slot -->
+            <div class="slot-card" id="slot-user1">
+              <div class="slot-header">
+                <h4>🔵 User 1 Cookie</h4>
+                <span class="slot-badge" id="badge-ck-user1">Not Saved</span>
+              </div>
+              <p class="slot-meta" id="meta-ck-user1">Valid Until: Not set</p>
+              <button class="btn btn-sm btn-primary" onclick="openEditCookieModal('user1')">✏️ Edit / Update</button>
+            </div>
+
+            <!-- User 2 Cookie Slot -->
+            <div class="slot-card" id="slot-user2">
+              <div class="slot-header">
+                <h4>🟢 User 2 Cookie</h4>
+                <span class="slot-badge" id="badge-ck-user2">Not Saved</span>
+              </div>
+              <p class="slot-meta" id="meta-ck-user2">Valid Until: Not set</p>
+              <button class="btn btn-sm btn-primary" onclick="openEditCookieModal('user2')">✏️ Edit / Update</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3>🪪 Saved Account Credentials</h3>
+              <span class="card-desc">Email & Password profiles for form login</span>
+            </div>
+            <button class="btn btn-outline-danger" onclick="confirmResetCreds()">🗑️ Reset Login IDs</button>
+          </div>
+
+          <div class="slots-grid">
+            <!-- Login 1 -->
+            <div class="slot-card">
+              <div class="slot-header">
+                <h4>🪪 Login 1</h4>
+                <span class="slot-badge" id="badge-cr-login1">Not Set</span>
+              </div>
+              <p class="slot-meta" id="meta-cr-login1">Email: Not set</p>
+              <button class="btn btn-sm btn-primary" onclick="openEditCredModal('login1')">✏️ Set Email & Password</button>
+            </div>
+
+            <!-- Login 2 -->
+            <div class="slot-card">
+              <div class="slot-header">
+                <h4>🪪 Login 2</h4>
+                <span class="slot-badge" id="badge-cr-login2">Not Set</span>
+              </div>
+              <p class="slot-meta" id="meta-cr-login2">Email: Not set</p>
+              <button class="btn btn-sm btn-primary" onclick="openEditCredModal('login2')">✏️ Set Email & Password</button>
+            </div>
+
+            <!-- System ENV -->
+            <div class="slot-card">
+              <div class="slot-header">
+                <h4>🔑 System ENV</h4>
+                <span class="slot-badge" id="badge-cr-env">Configured</span>
+              </div>
+              <p class="slot-meta" id="meta-cr-env">Loaded from .env WEBSITE_EMAIL</p>
+              <button class="btn btn-sm btn-secondary" onclick="switchTab('tab-env')">⚙️ Edit in .env</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════ TAB 3: USERS & SUBSCRIPTIONS ═════════ -->
+      <section id="tab-users" class="tab-pane">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3>👥 Registered Telegram Users</h3>
+              <span class="card-desc">Manage subscription approvals, plans, and messaging</span>
+            </div>
+            <button class="btn btn-primary" onclick="openBroadcastModal()">📢 Broadcast Message</button>
+          </div>
+
+          <!-- Users Stats Row -->
+          <div class="user-stats-strip">
+            <span class="stat-pill">Total: <b id="u-stat-total">0</b></span>
+            <span class="stat-pill approved">✅ Approved: <b id="u-stat-approved">0</b></span>
+            <span class="stat-pill pending">⏳ Pending: <b id="u-stat-pending">0</b></span>
+            <span class="stat-pill receiving">🔔 Receiving Alerts: <b id="u-stat-receiving">0</b></span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="user-table">
+              <thead>
+                <tr>
+                  <th>User / Name</th>
+                  <th>Telegram ID</th>
+                  <th>Status</th>
+                  <th>Free Alerts</th>
+                  <th>Expiry / Plan</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body">
+                <tr><td colspan="6" class="text-center">Loading registered users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════ TAB 4: TELEGRAM NOTIFICATIONS ═════════ -->
+      <section id="tab-templates" class="tab-pane">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3>💬 Telegram Notification Template Editor</h3>
+              <span class="card-desc">Edit emojis, text formatting, and variables for every Telegram message</span>
+            </div>
+            <button class="btn btn-success" id="btn-save-templates">💾 Save All Templates</button>
+          </div>
+
+          <div class="template-layout">
+            <!-- Template Selector & Variables Palette -->
+            <div class="template-sidebar">
+              <h4>Select Notification</h4>
+              <div class="template-picker" id="template-picker">
+                <!-- Dynamically populated buttons -->
+              </div>
+
+              <div class="variable-palette">
+                <h4>Available Variables</h4>
+                <p class="palette-desc">Click variable to insert into template:</p>
+                <div class="tags-container" id="variable-tags">
+                  <span class="tag" onclick="insertTag('{level_name}')">{level_name}</span>
+                  <span class="tag" onclick="insertTag('{available}')">{available}</span>
+                  <span class="tag" onclick="insertTag('{booked}')">{booked}</span>
+                  <span class="tag" onclick="insertTag('{languages}')">{languages}</span>
+                  <span class="tag" onclick="insertTag('{quick_link}')">{quick_link}</span>
+                  <span class="tag" onclick="insertTag('{profile}')">{profile}</span>
+                  <span class="tag" onclick="insertTag('{uptime}')">{uptime}</span>
+                  <span class="tag" onclick="insertTag('{report}')">{report}</span>
+                  <span class="tag" onclick="insertTag('{first_name}')">{first_name}</span>
+                  <span class="tag" onclick="insertTag('{status}')">{status}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Template Editor & Live Preview -->
+            <div class="template-editor-pane">
+              <div class="editor-header">
+                <span class="current-tpl-title" id="active-tpl-title">Admin Job Alert</span>
+                <span class="badge" id="active-tpl-mode">HTML</span>
+              </div>
+              <textarea id="template-textarea" class="code-textarea" rows="8"></textarea>
+
+              <div class="preview-box">
+                <h4>📱 Simulated Telegram Preview</h4>
+                <div class="telegram-bubble" id="telegram-preview-content">
+                  <!-- Live formatted preview -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════ TAB 5: .ENV SETTINGS ═════════ -->
+      <section id="tab-env" class="tab-pane">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div>
+              <h3>⚙️ Environment Configuration (.env)</h3>
+              <span class="card-desc">Change every parameter for the selected bot</span>
+            </div>
+            <div class="env-mode-toggle">
+              <button class="btn btn-sm btn-outline active" id="btn-env-form-view">Form View</button>
+              <button class="btn btn-sm btn-outline" id="btn-env-raw-view">Raw File View</button>
+              <button class="btn btn-sm btn-primary" id="btn-save-env">💾 Save .env</button>
+            </div>
+          </div>
+
+          <!-- Form View -->
+          <div id="env-form-view" class="env-form-grid">
+            <!-- Group: Telegram -->
+            <div class="form-group-card">
+              <h4>🤖 Telegram Credentials</h4>
+              <label>BOT_TOKEN</label>
+              <input type="text" id="env-BOT_TOKEN" placeholder="Telegram Bot Token">
+              <label>ADMIN_ID</label>
+              <input type="text" id="env-ADMIN_ID" placeholder="Admin Telegram ID">
+              <label>RECOVERY_KEY</label>
+              <input type="text" id="env-RECOVERY_KEY" placeholder="6-digit recovery key">
+              <label>UPI_ID</label>
+              <input type="text" id="env-UPI_ID" placeholder="name@upi">
+            </div>
+
+            <!-- Group: Website -->
+            <div class="form-group-card">
+              <h4>🌐 Website & Login URLs</h4>
+              <label>LOGIN_URL</label>
+              <input type="text" id="env-LOGIN_URL">
+              <label>LOGIN_SUBMIT_URL</label>
+              <input type="text" id="env-LOGIN_SUBMIT_URL">
+              <label>WORK_URL</label>
+              <input type="text" id="env-WORK_URL">
+              <label>QUICK_LOGIN_URL</label>
+              <input type="text" id="env-QUICK_LOGIN_URL">
+              <label>WEBSITE_EMAIL</label>
+              <input type="text" id="env-WEBSITE_EMAIL">
+              <label>WEBSITE_PASSWORD</label>
+              <input type="password" id="env-WEBSITE_PASSWORD">
+            </div>
+
+            <!-- Group: Timers -->
+            <div class="form-group-card">
+              <h4>⏱️ Intervals & Human Delays</h4>
+              <div class="input-row">
+                <div>
+                  <label>CHECK_INTERVAL_MIN (min)</label>
+                  <input type="number" id="env-CHECK_INTERVAL_MIN">
+                </div>
+                <div>
+                  <label>CHECK_INTERVAL_MAX (min)</label>
+                  <input type="number" id="env-CHECK_INTERVAL_MAX">
+                </div>
+              </div>
+              <div class="input-row">
+                <div>
+                  <label>SURF_DELAY_MIN (s)</label>
+                  <input type="number" step="0.1" id="env-SURF_DELAY_MIN">
+                </div>
+                <div>
+                  <label>SURF_DELAY_MAX (s)</label>
+                  <input type="number" step="0.1" id="env-SURF_DELAY_MAX">
+                </div>
+              </div>
+              <div class="input-row">
+                <div>
+                  <label>SURF_PAGES_MIN</label>
+                  <input type="number" id="env-SURF_PAGES_MIN">
+                </div>
+                <div>
+                  <label>SURF_PAGES_MAX</label>
+                  <input type="number" id="env-SURF_PAGES_MAX">
+                </div>
+              </div>
+              <label>REMINDER_FREQ_MINS</label>
+              <input type="number" id="env-REMINDER_FREQ_MINS">
+            </div>
+
+            <!-- Group: Limits -->
+            <div class="form-group-card">
+              <h4>🍪 Profile Session Limits (Hours)</h4>
+              <div class="input-row">
+                <div>
+                  <label>ADMIN_SHUTDOWN</label>
+                  <input type="number" id="env-ADMIN_SHUTDOWN_HOURS">
+                </div>
+                <div>
+                  <label>ADMIN_REMINDER</label>
+                  <input type="number" id="env-ADMIN_REMINDER_HOURS">
+                </div>
+              </div>
+              <div class="input-row">
+                <div>
+                  <label>USER1_SHUTDOWN</label>
+                  <input type="number" id="env-USER1_SHUTDOWN_HOURS">
+                </div>
+                <div>
+                  <label>USER1_REMINDER</label>
+                  <input type="number" id="env-USER1_REMINDER_HOURS">
+                </div>
+              </div>
+              <div class="input-row">
+                <div>
+                  <label>USER2_SHUTDOWN</label>
+                  <input type="number" id="env-USER2_SHUTDOWN_HOURS">
+                </div>
+                <div>
+                  <label>USER2_REMINDER</label>
+                  <input type="number" id="env-USER2_REMINDER_HOURS">
+                </div>
+              </div>
+              <div class="input-row">
+                <div>
+                  <label>ENV_SHUTDOWN</label>
+                  <input type="number" id="env-ENV_SHUTDOWN_HOURS">
+                </div>
+                <div>
+                  <label>ENV_REMINDER</label>
+                  <input type="number" id="env-ENV_REMINDER_HOURS">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw View -->
+          <div id="env-raw-view" class="hidden">
+            <textarea id="env-raw-textarea" class="code-textarea" rows="22"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════ TAB 6: CONSOLE LOGS ═════════ -->
+      <section id="tab-logs" class="tab-pane">
+        <div class="card terminal-card">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+              <span class="term-title" id="term-title">Bot 1 Console Stream</span>
+            </div>
+            <div class="terminal-controls">
+              <label class="checkbox-label">
+                <input type="checkbox" id="chk-autoscroll" checked> Auto-scroll
+              </label>
+              <button class="btn-micro" id="btn-clear-logs">Clear</button>
+            </div>
+          </div>
+          <div class="terminal-body" id="terminal-body">
+            <div class="log-line info">[APP] Connecting to real-time engine stream...</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ═════════ MODALS ═════════ -->
+
+    <!-- Start Engine Profile Modal -->
+    <div class="modal" id="modal-start-engine">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🔑 Select Login Method</h3>
+          <button class="modal-close" onclick="closeModal('modal-start-engine')">&times;</button>
+        </div>
+        <p class="modal-desc">Choose which credentials or cookie profile to connect with:</p>
+        <div class="profile-options-grid">
+          <button class="profile-opt-btn" onclick="executeStartEngine('admin')">
+            <span class="opt-icon">🔴</span>
+            <div>
+              <b>Admin Cookie</b>
+              <small>Slot: admin</small>
+            </div>
+          </button>
+          <button class="profile-opt-btn" onclick="executeStartEngine('user1')">
+            <span class="opt-icon">🔵</span>
+            <div>
+              <b>User 1 Cookie</b>
+              <small>Slot: user1</small>
+            </div>
+          </button>
+          <button class="profile-opt-btn" onclick="executeStartEngine('user2')">
+            <span class="opt-icon">🟢</span>
+            <div>
+              <b>User 2 Cookie</b>
+              <small>Slot: user2</small>
+            </div>
+          </button>
+          <button class="profile-opt-btn" onclick="executeStartEngine('env')">
+            <span class="opt-icon">🖥️</span>
+            <div>
+              <b>System ENV Login</b>
+              <small>Email & Pass from .env</small>
+            </div>
+          </button>
+          <button class="profile-opt-btn" onclick="executeStartEngine('login1')">
+            <span class="opt-icon">🪪</span>
+            <div>
+              <b>Login 1</b>
+              <small>Saved creds slot 1</small>
+            </div>
+          </button>
+          <button class="profile-opt-btn" onclick="executeStartEngine('login2')">
+            <span class="opt-icon">🪪</span>
+            <div>
+              <b>Login 2</b>
+              <small>Saved creds slot 2</small>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Cookie Modal -->
+    <div class="modal" id="modal-edit-cookie">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-cookie-title">Edit Cookie</h3>
+          <button class="modal-close" onclick="closeModal('modal-edit-cookie')">&times;</button>
+        </div>
+        <input type="hidden" id="edit-cookie-slot">
+        <div class="modal-form">
+          <label>Cookie Name (e.g. remember_web_...)</label>
+          <input type="text" id="edit-cookie-name" placeholder="remember_web_59ba36addc2b2f9401580f014c7f58e4e05021">
+          <label>Cookie Value</label>
+          <textarea id="edit-cookie-value" rows="3" placeholder="Paste full cookie value here"></textarea>
+          <label>XSRF-TOKEN (optional, or 'skip')</label>
+          <input type="text" id="edit-cookie-xsrf" placeholder="XSRF token">
+          <label>Valid Until Date (e.g. 24-Dec-2026)</label>
+          <input type="text" id="edit-cookie-valid" placeholder="Auto or 24-Dec-2026">
+          <button class="btn btn-primary btn-block" onclick="saveCookieModal()">Save Cookie</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Creds Modal -->
+    <div class="modal" id="modal-edit-creds">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-creds-title">Set Login Credentials</h3>
+          <button class="modal-close" onclick="closeModal('modal-edit-creds')">&times;</button>
+        </div>
+        <input type="hidden" id="edit-creds-slot">
+        <div class="modal-form">
+          <label>Website Email</label>
+          <input type="email" id="edit-creds-email" placeholder="user@gmail.com">
+          <label>Website Password</label>
+          <input type="password" id="edit-creds-password" placeholder="Password">
+          <button class="btn btn-primary btn-block" onclick="saveCredsModal()">Save Credentials</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Broadcast Modal -->
+    <div class="modal" id="modal-broadcast">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>📢 Broadcast Announcement</h3>
+          <button class="modal-close" onclick="closeModal('modal-broadcast')">&times;</button>
+        </div>
+        <div class="modal-form">
+          <label>Message Content</label>
+          <textarea id="broadcast-text" rows="5" placeholder="Type message to broadcast to all subscribed Telegram users..."></textarea>
+          <button class="btn btn-primary btn-block" onclick="sendBroadcast()">Send Broadcast</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direct Message Modal -->
+    <div class="modal" id="modal-direct-msg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>💬 Direct Message to User</h3>
+          <button class="modal-close" onclick="closeModal('modal-direct-msg')">&times;</button>
+        </div>
+        <input type="hidden" id="dm-user-id">
+        <div class="modal-form">
+          <p id="dm-user-name">Recipient: </p>
+          <label>Message Text</label>
+          <textarea id="dm-text" rows="4" placeholder="Type personal message..."></textarea>
+          <button class="btn btn-primary btn-block" onclick="sendDirectMessage()">Send Message</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Report Modal -->
+    <div class="modal" id="modal-status-report">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>📊 Full System Status Report</h3>
+          <button class="modal-close" onclick="closeModal('modal-status-report')">&times;</button>
+        </div>
+        <pre id="status-report-text" class="status-pre"></pre>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

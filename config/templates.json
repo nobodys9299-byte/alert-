@@ -1,0 +1,44 @@
+{
+  "admin_job_alert": {
+    "title": "Admin Job Alert",
+    "description": "Notification sent to Admin when new jobs are detected",
+    "parse_mode": "HTML",
+    "template": "🎧 <b>{level_name}</b> | <b>Avail: {available}</b> 🍏 | Booked: {booked}\n{languages}\n\n━━━━━━━━━━━━━━━━━━━\n💻 <a href=\"{quick_link}\">Log in quickly!</a>"
+  },
+  "user_job_alert": {
+    "title": "User Job Alert",
+    "description": "Notification sent to subscribed users when new jobs are detected",
+    "parse_mode": "HTML",
+    "template": "🎧 <b>{level_name}</b> | <b>Avail: {available}</b> 🍏 | Booked: {booked}\n\n━━━━━━━━━━━━━━━━━━━\n💻 <a href=\"{quick_link}\">Log in quickly!</a>"
+  },
+  "session_reminder": {
+    "title": "Session Reminder",
+    "description": "Periodic reminder while the session is running",
+    "parse_mode": "Markdown",
+    "template": "⏳ *Reminder*\nProfile: {profile}\nUptime: {uptime}"
+  },
+  "auto_disconnect": {
+    "title": "Auto-Disconnect Notice",
+    "description": "Sent when session reaches profile shutdown limit",
+    "parse_mode": "Markdown",
+    "template": "🛑 *AUTO-DISCONNECT*\nTime limit reached for {profile}.\n\n{report}"
+  },
+  "session_lost": {
+    "title": "Session Lost Alert",
+    "description": "Sent when session or network connection is lost",
+    "parse_mode": "Markdown",
+    "template": "⚠️ *Session Lost*\n🔴 Engine stopped.\n\n{report}"
+  },
+  "welcome_message": {
+    "title": "Welcome Message (/start)",
+    "description": "Greeting sent to users when they start the bot",
+    "parse_mode": "Markdown",
+    "template": "🎉 *Welcome, {first_name}!* 🎉\n\n🤖 I am your personal Job Alert Bot.\n📡 *Your Status:* {status}\n\n✨ You will automatically receive notifications when new work is available!\n👇 Use the menu below to manage your account."
+  },
+  "last_free_alert": {
+    "title": "Last Free Alert Warning",
+    "description": "Warning sent when a user has only 1 free alert left",
+    "parse_mode": "Markdown",
+    "template": "⚠️ *Last Free Alert!*\n\n₹6 — 2 Days\n₹100 — 30 Days\n\n/start"
+  }
+}

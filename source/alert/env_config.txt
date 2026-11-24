@@ -1,0 +1,65 @@
+
+BOT_TOKEN=8691156390:AAG2ChcnnQ53q-U8do-1wvdvKIjHJtGSKNY
+ADMIN_ID=785138166
+
+LOGIN_URL=https://transcribersnet.com/login
+LOGIN_SUBMIT_URL=https://transcribersnet.com/admin/login-details-submit
+WORK_URL=https://transcribersnet.com/admin/all-level-work
+
+SURF_URLS=https://transcribersnet.com/admin/userDashboard,https://transcribersnet.com/admin/my-work,https://transcribersnet.com/admin/userattendance,https://transcribersnet.com/admin/find-proofreading,https://transcribersnet.com/admin/all-level-work
+
+## click here to login ##
+
+QUICK_LOGIN_URL=https://transcribersnet.com/login
+
+###  ENV ID & PASS ##
+WEBSITE_EMAIL=iashwini952@gmail.com
+WEBSITE_PASSWORD=Hello@@124
+
+## --- Delay system --- ##
+
+CHECK_INTERVAL_MIN=3
+CHECK_INTERVAL_MAX=10
+LOG_LEVEL=INFO
+
+## --- Surfing Count & Delay  --- ##
+
+SURF_PAGES_MIN=0
+SURF_PAGES_MAX=2
+
+SURF_DELAY_MIN=3.0
+SURF_DELAY_MAX=9.59
+
+# ── PAYMENT DETAILS ──
+UPI_ID=8709380495@ybl
+
+# ── SECURITY RECOVERY KEY ──
+# This key is used to reset your 6-digit PIN if you for>
+# Keep this secure!
+RECOVERY_KEY=250116
+
+# --Remainder& -- For -- all login -- method--! 
+
+REMINDER_FREQ_MINS=20
+
+##--COOKIES--!
+
+ADMIN_SHUTDOWN_HOURS=3
+ADMIN_REMINDER_HOURS=2
+
+USER1_SHUTDOWN_HOURS=3
+USER1_REMINDER_HOURS=2
+
+USER2_SHUTDOWN_HOURS=4
+USER2_REMINDER_HOURS=3
+
+#--LOGIN--!
+
+ENV_SHUTDOWN_HOURS=3
+ENV_REMINDER_HOURS=2
+
+LOGIN1_SHUTDOWN_HOURS=3
+LOGIN1_REMINDER_HOURS=2
+
+LOGIN2_SHUTDOWN_HOURS=4
+LOGIN2_REMINDER_HOURS=3
